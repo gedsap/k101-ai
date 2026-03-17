@@ -3,7 +3,16 @@ import json
 import math
 import heapq
 import urllib.request
-import streamlit as st
+st.title("...")import streamlit as st
+
+def safe_load_index():
+    try:
+        ensure_index_file()
+        return True
+    except Exception as e:
+        st.error(f"Index failed to load: {e}")
+        return False
+
 from openai import OpenAI
 
 # -----------------------
@@ -35,8 +44,14 @@ def check_password():
     if st.session_state.password_correct:
         return True
 
-    st.title("Lecture AI")
-    st.write("Enter password to continue.")
+    st.title("Kohelet AI")
+
+    if "index_loaded" not in st.session_state:
+    with st.spinner("Loading lecture index..."):
+        success = safe_load_index()
+        st.session_state["index_loaded"] = success
+
+    st.write("The Thought of Creation!")
 
     password = st.text_input("Password", type="password")
 
@@ -62,7 +77,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 # DOWNLOAD INDEX IF NEEDED
 # -----------------------
 
-def ensure_index_file():
+def # ensure_index_file():
     if os.path.exists(INDEX_FILE):
         return
 
