@@ -3,16 +3,7 @@ import json
 import math
 import heapq
 import urllib.request
-st.title("...")import streamlit as st
-
-def safe_load_index():
-    try:
-        ensure_index_file()
-        return True
-    except Exception as e:
-        st.error(f"Index failed to load: {e}")
-        return False
-
+import streamlit as st
 from openai import OpenAI
 
 # -----------------------
@@ -34,6 +25,27 @@ ANSWER_MODEL = "gpt-4.1"
 st.set_page_config(page_title="Lecture AI", layout="wide")
 
 # -----------------------
+# DOWNLOAD INDEX (SAFE)
+# -----------------------
+
+def ensure_index_file():
+    if os.path.exists(INDEX_FILE):
+        return
+
+    st.info("Preparing lecture index. First launch may take a minute or two.")
+
+    with st.spinner("Downloading lecture index..."):
+        urllib.request.urlretrieve(INDEX_URL, INDEX_FILE)
+
+def safe_load_index():
+    try:
+        ensure_index_file()
+        return True
+    except Exception as e:
+        st.error(f"Index failed to load: {e}")
+        return False
+
+# -----------------------
 # PASSWORD PROTECTION
 # -----------------------
 
@@ -47,47 +59,34 @@ def check_password():
     st.title("Kohelet AI")
 
     if "index_loaded" not in st.session_state:
-    with st.spinner("Loading lecture index..."):
-        success = safe_load_index()
-        st.session_state["index_loaded"] = success
+        with st.spinner("Loading lecture index..."):
+            success = safe_load_index()
+            st.session_state["index_loaded"] = success
 
     st.write("The Thought of Creation!")
 
     password = st.text_input("Password", type="password")
 
     if password:
-        if password == st.secrets["APP_PASSWORD"]:
+        correct_password = st.secrets.get("APP_PASSWORD", "test")
+
+        if password == correct_password:
             st.session_state.password_correct = True
             st.rerun()
         else:
             st.error("Incorrect password.")
-            st.stop()
 
+    return False
+
+
+if not check_password():
     st.stop()
-
-check_password()
 
 # -----------------------
 # OPENAI CLIENT
 # -----------------------
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-# -----------------------
-# DOWNLOAD INDEX IF NEEDED
-# -----------------------
-
-def # ensure_index_file():
-    if os.path.exists(INDEX_FILE):
-        return
-
-    st.title("Lecture AI")
-    st.info("Preparing lecture index. First launch may take a minute or two.")
-
-    with st.spinner("Downloading lecture index..."):
-        urllib.request.urlretrieve(INDEX_URL, INDEX_FILE)
-
-ensure_index_file()
+client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
 
 # -----------------------
 # LOAD INDEX
@@ -127,14 +126,12 @@ def retrieve_top_chunks(question, top_k=TOP_K):
         sim = cosine(qemb, item["embedding"])
         scored.append((sim, item["text"]))
 
-    top_chunks = [x[1] for x in heapq.nlargest(top_k, scored, key=lambda 
-x: x[0])]
+    top_chunks = [x[1] for x in heapq.nlargest(top_k, scored, key=lambda x: x[0])]
     return top_chunks
 
 def compress_context(question, chunks):
     compression_prompt = f"""
-Select the passages from these lecture excerpts that are most useful for 
-answering the user's question.
+Select the passages from these lecture excerpts that are most useful for answering the user's question.
 
 User question:
 {question}
